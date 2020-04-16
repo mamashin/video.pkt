@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}Запись сбоки заказа{% endblock %}
+{% block extra_css %}
+    {#    <link rel="stylesheet" href="/static/debug.css">#}
+{% endblock %}
+{% block content %}
+
+    <div class="container">
+        <div class="column is-4 is-offset-4">
+            <b-field :type="input_type" v-if="!now_record">
+                <b-input placeholder="Номер заказа"
+                         size="is-medium"
+                         type="number"
+                         v-on:keyup.native.enter="order_enter"
+                         v-on:click.native="on_input_click"
+                         :loading="loading"
+                         :disabled="input_order_dis"
+                         v-model="order"></b-input>
+            </b-field>
+            <b-field v-if="now_record">
+                <button class="button is-danger is-medium">
+                    <b-icon icon="camera"></b-icon>
+                    <span>Идет запись заказа N <strong>[[ order ]]</strong></span>
+                </button>
+            </b-field>
+
+        </div>
+    </div>
+    <br>
+    <div class="container">
+    <div class="column is-12">
+        <div class="columns is-centered">
+            <div class="column is-one-third" v-for="cam of vcams">
+                <div class="title">
+                    <article class="tile is-child box"
+                             :class="cam.stream ? 'has-background-warning':'has-background-white-ter'">
+                        <div class="tile is-ancestor">
+                            <div class="tile is-vertical is-parent">
+                                <h1 class="subtitle"><a :href="'/cam/' + cam.id + '/'">[[ cam.name ]]</a>
+                                </h1>
+                                <div class="tile is-child box"
+                                     :class="cam.record ? 'has-background-danger':'has-background-dark-lighter'">
+                                    <figure class="image is-4by3">
+                                        <video-player :cam="cam"/>
+                                    </figure>
+                                </div>
+                                <div class="tile is-child ">
+                                    <b-field>
+                                        <b-switch size="is-medium"
+                                                  :id="'record-button-' + cam.id"
+                                                  type="is-success"
+                                                  :disabled="!cam.record && !allow_record"
+                                                  @input="on_record_click(cam.id, cam.record)"
+                                                  v-model="cam.record">REC
+                                        </b-switch>
+                                        <b-switch size="is-medium"
+                                                  type="is-success"
+                                                  @input="postData('videocam/' + cam.id, 'PUT', {'stream': cam.stream})"
+                                                  v-model="cam.stream">Online
+                                        </b-switch>
+                                    </b-field>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+                <p>&nbsp;&nbsp;</p>
+            </div> <!-- end v-for -->
+        </div>
+    </div>
+    </div>
+
+{% endblock %}
+{% block extra_js %}
+
+    <script type="text/x-template" id="video-template">
+        <video
+                :id="'cam-' + cam.id"
+                :name="'cam-' + cam.id"
+                class="video-js vjs-big-play-centered vjs-fill has-ratio"
+                ref="videoPlayer"
+{#                data-setup="{}"#}
+        >
+            <source :src="'{{ cdn_url }}/hls/sub-' + cam.id +'.m3u8'"
+                    type="application/x-mpegURL"/>
+        </video>
+    </script>
+
+    <script>
+        Vue.component('video-player', {
+            name: "VideoPlayer",
+            template: '#video-template',
+            props: ['cam'],
+            data() {
+                return {
+                    player: null
+                }
+            },
+            mounted() {
+                self = this;
+                this.player = videojs(this.$refs.videoPlayer, {
+                    autoplay: false,
+                    controls: true,
+                    preload: 'none',
+                    {% if not carm %}
+                    crossOrigin: 'use-credentials',
+                    {% endif %}
+                    html5: {
+                        hls: {
+                            withCredentials: {% if carm %} false {% else %} true {% endif %},
+                            overrideNative: true
+                        },
+                        nativeAudioTracks: false,
+                        nativeVideoTracks: false
+                    }
+                });
+                this.player.ready(function () {
+                });
+
+            },
+            created() {
+                {#console.log(videojs.getPlayers());#}
+            },
+            beforeDestroy() {
+                if (this.player) {
+                    this.player.dispose()
+                }
+            }
+        });
+
+        const app = new Vue({
+            delimiters: ['[[', ']]'],
+            el: '#app',
+            data: {
+                vcams: null,
+                order: '',
+                order_status: false,
+                input_type: 'is-info',
+                loading: false,
+                input_order_dis: false,
+                allow_record: false,
+                now_record: false,
+                record_detail: ''
+            },
+            methods: {
+                postData: FetchFun,
+                async getData() {
+                    await fetch('/api/videocam/').then(response => response.json())
+                        .then(data => this.vcams = data);
+                    for (let i = 0; i < this.vcams.length; i++) {
+                        if (this.vcams[i].record) {
+                            this.now_record = this.vcams[i].record;
+                            this.allow_record = false;
+                            await FetchFun('last-order', 'POST', {'cam_id': this.vcams[i].id})
+                                .then(data => this.order = data.order_id);
+                            break;
+                        }
+                    }
+                },
+                record_stop_click() {
+                    this.$buefy.dialog.confirm({
+                        title: 'Выбрано файлов - ' + this.checkedRows.length,
+                        message: 'Отправить эти ролики клиенту ?',
+                        cancelText: 'Нет',
+                        confirmText: 'Да',
+                        type: 'is-success',
+                        onConfirm: () => this.$buefy.toast.open('Отпрвлено !')
+                    })
+                },
+                on_input_click() {
+                    this.input_type = 'is-info';
+                    this.allow_record = false;
+                    this.order = '';
+                },
+                async send_video(data){
+                    await FetchFun('sendorder', 'POST', data)
+                            .catch(error => console.error(error));
+                    this.$buefy.toast.open({message: 'Отпрвленно !', type: 'is-success'});
+                    this.record_detail = '';
+                    },
+                async on_record_click(cam_id, cam_record) {
+                    await this.postData('videocam/' + cam_id, 'PUT', {'record': cam_record, 'order': this.order})
+                        .then(data => this.record_detail = data)
+                        .catch(error => console.error(error));
+                    this.now_record = !this.now_record;
+                    if (!this.now_record) {
+                        this.order = '';
+                        this.input_type = 'is-info';
+                    }
+                    this.allow_record = false;
+                    console.log("Clik!");
+                    console.log(this.record_detail);
+                    if (!this.now_record) {
+                        this.$buefy.dialog.confirm({
+                            {#title: 'Отправить записанное видео клиенту ?',#}
+                            message: 'Отправить сразу записанное видео клиенту ?',
+                            cancelText: 'Позже',
+                            confirmText: 'Да',
+                            type: 'is-success',
+                            onConfirm: () => this.send_video(this.record_detail),
+                            onCancel: () => this.$buefy.toast.open({message: 'Сохранили в архив', type: 'is-info'})
+                        })
+                    }
+                },
+                async order_enter(event) {
+                    this.loading = true;
+                    this.input_order_dis = true;
+                    await FetchFun('order', 'POST', {'order': parseInt(this.order)}).then(data => this.order_status = data.status)
+                        .catch(error => console.error(error));
+                    this.loading = false;
+                    this.input_order_dis = false;
+
+                    if (this.order_status) {
+                        this.input_type = 'is-success';
+                        this.allow_record = true;
+
+                    } else {
+                        this.input_type = 'is-danger';
+                    }
+                }
+            },
+            computed: {
+                is_order_input() {
+                    return this.order.trim()
+                }
+            },
+            beforeMount() {
+                this.getData();
+            },
+            mounted() {
+            },
+            created: function () {
+            }
+        });
+    </script>
+    <script type="text/javascript">
+      videojs.Hls.xhr.beforeRequest = function(options) {
+          var csrftoken = getCookie("csrftoken");
+        options.headers = { 'X-CSRFToken': csrftoken };
+        return options
+      };
+    </script>
+{% endblock %}

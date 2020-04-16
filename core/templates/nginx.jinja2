@@ -1,0 +1,8 @@
+{% for cam in result %}
+application cam{{cam.pk}} {
+            # Main stream
+            exec_static ffmpeg -rtsp_transport tcp -reorder_queue_size 0 -i rtsp://{{ cam.login }}:{{ cam.password }}@{{ cam.ip}}:{{ cam.rtsp_port }}/{{ cam.main_stream_url|safe }} -i /opt/nginx-live/logo-big.png -filter_complex "overlay=x=main_w-overlay_w-(main_w*0.03):y=main_h*0.03" -c:v libx264 -vprofile baseline -an -f flv rtmp://{{ rtpm_server }}/cam{{cam.pk}}/main-{{cam.pk}};
+            # Sub stream
+            exec_static ffmpeg -rtsp_transport tcp -reorder_queue_size 0 -i rtsp://{{ cam.login }}:{{ cam.password }}@{{ cam.ip}}:{{ cam.rtsp_port }}/{{ cam.sub_stream_url|safe }} -i /opt/nginx-live/logo-small.png -filter_complex "overlay=x=main_w-overlay_w-(main_w*0.03):y=main_h*0.03" -c:v libx264 -vprofile baseline -an -f flv rtmp://{{ rtpm_server }}/cam{{cam.pk}}/sub-{{cam.pk}};
+        }
+{% endfor %}

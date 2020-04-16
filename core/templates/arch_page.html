@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Архив записей{% endblock %}
+{% block extra_css %}
+    {#<link rel="stylesheet" href="/static/debug.css">#}
+    <style>
+        tr.is-send {
+            background: #d0e9c6;
+            color: #000;
+        }
+    </style>
+{% endblock %}
+{% block extend_menu %}
+    <b-navbar-item tag="div">
+        <div class="buttons">
+            <button class="button field is-success" @click="confirm"
+                    :disabled="!checkedRows.length">
+                <b-icon icon="send"></b-icon>
+                <span>Отправить</span>
+            </button>
+        </div>
+    </b-navbar-item>
+<b-navbar-item tag="div">
+        <div class="buttons">
+
+            <button class="button field is-info" :disabled="!selected.id"
+                    @click="modalClk()">
+                <b-icon icon="video"></b-icon>
+                <span>Посмотр</span>
+            </button>
+        </div>
+    </b-navbar-item>
+{% endblock %}
+{% block content %}
+
+    <b-modal :active.sync="modalVideo" has-modal-card>
+        <div class="modal-card">
+            <header class="modal-card-head"><br>
+                <p class="modal-card-title">Заказ N[[selected.order_id]]</p>
+            </header>
+            <video :src="'{{ cdn_url }}/records/' + selected.filename + '.mp4'" controls
+                   autoplay></video>
+        </div>
+    </b-modal>
+
+    <div class="container">
+    <div class="column is-12">
+        <b-table
+                :data="all_records"
+                paginated
+                pagination-simple
+                per-page="20"
+                :selected.sync="selected"
+                {#            hoverable#}
+                checkable
+                checkbox-position="left"
+                {#            :checked-rows.sync="(row) => row.finish"#}
+                :is-row-checkable="(row) => !row.publish"
+                :row-class="(row, index) => row.publish && 'is-send'"
+                {#            :row-class="(row, index) => row.duration_human && 'is-send'"#}
+                :checked-rows.sync="checkedRows"
+                {#            :current-page.sync="currentPage"#}
+                {#            default-sort="user.first_name"#}
+                backend-sorting
+                aria-next-label="Next page"
+                aria-previous-label="Previous page"
+                aria-page-label="Page"
+                aria-current-label="Current page">
+
+            <template slot-scope="props">
+                <b-table-column field="order_id" label="Номер заказа" sortable searchable>
+                    [[ props.row.order_id ]]
+                </b-table-column>
+
+                <b-table-column field="rec_time_iso" label="Время записи" sortable>
+                    [[ props.row.rec_time_iso ]]
+                </b-table-column>
+
+                <b-table-column field="publish_time_iso" label="Время публикации" sortable>
+                    [[ props.row.publish_time_iso ]]
+                </b-table-column>
+
+                <b-table-column field="duration_human" label="Длина" sortable>
+                    [[ props.row.duration_human ]]
+                </b-table-column>
+
+                <b-table-column field="size_human" label="Размер" sortable>
+                    [[ props.row.size_human ]]
+                </b-table-column>
+
+                <b-table-column field="cam_name" label="URL">
+                    <template v-if="props.row.publish">
+                        <a :href="'/?v='+props.row.short_url">[[props.row.short_url]]</a>
+                    </template>
+                </b-table-column>
+
+                <b-table-column field="cam_name" label="Камера">
+                    [[ props.row.cam_name ]]
+                </b-table-column>
+
+            </template>
+        </b-table>
+    </div>
+    </div>
+
+{% endblock %}
+{% block extra_js %}
+    <script>
+        const app = new Vue({
+            delimiters: ['[[', ']]'],
+            el: '#app',
+            data: {
+                vcams: null,
+                order: '',
+                order_status: false,
+                input_type: 'is-info',
+                loading: false,
+                input_order_dis: false,
+                allow_record: false,
+                now_record: false,
+                all_records: [{}],
+                sortIcon: 'arrow-up',
+                checkedRows: [],
+                isComponentModalActive: false,
+                modalVideo: false,
+                selected: {},
+                rerender: 1
+            },
+            methods: {
+                modalClk() {
+                    this.modalVideo = true
+                },
+                postData: FetchFun,
+                on_record_click(cam_id, cam_record) {
+                    this.postData('videocam/' + cam_id, 'PUT', {'record': cam_record, 'order': this.order});
+                    this.now_record = !this.now_record;
+                    if (!this.now_record) {
+                        this.order = '';
+                        this.input_type = 'is-info';
+                    }
+                    this.allow_record = false;
+                    console.log("Clik!");
+                },
+                async send_video(data) {
+                    await FetchFun('sendorder', 'POST', data)
+                        .catch(error => console.error(error));
+                    this.$buefy.toast.open('Отпрвлено !');
+                    {#wait(1000);#}
+                    FetchFun('videorec', 'GET').then(data => this.all_records = data)
+                        .catch(error => console.error(error));
+                    this.checkedRows = [];
+                },
+
+                confirm() {
+                    this.$buefy.dialog.confirm({
+                        title: 'Выбрано файлов - ' + this.checkedRows.length,
+                        message: 'Отправить эти ролики клиенту ?',
+                        cancelText: 'Нет',
+                        confirmText: 'Да',
+                        type: 'is-success',
+                        onConfirm: () => this.send_video(this.checkedRows)
+                    })
+                },
+                async order_enter(event) {
+                    this.loading = true;
+                    this.input_order_dis = true;
+                    await FetchFun('order', 'POST', {'order': parseInt(this.order)}).then(data => this.order_status = data.status)
+                        .catch(error => console.error(error));
+                    this.loading = false;
+                    this.input_order_dis = false;
+
+                    if (this.order_status) {
+                        this.input_type = 'is-success';
+                        this.allow_record = true;
+
+                    } else {
+                        this.input_type = 'is-danger';
+                    }
+                }
+            },
+            beforeMount() {
+                FetchFun('videorec', 'GET').then(data => this.all_records = data)
+                    .catch(error => console.error(error))
+                ;
+            },
+        });
+    </script>
+{% endblock %}

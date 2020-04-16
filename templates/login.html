@@ -1,0 +1,95 @@
+{% load static %}
+{% load widget_tweaks %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    {% include "favicon.html" %}
+    <link rel="stylesheet" href="{% static '/css/buefy.min.css' %}"/>
+    <link rel="stylesheet" href="{% static '/css/materialdesignicons.min.css' %}"/>
+    <style>
+        .center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+    </style>
+    {# <link rel="stylesheet" href="static/debug.css">#}
+    {% block extra_css %}{% endblock %}
+
+    <title>
+        {% block title %}Кто здесь ?! {% endblock %}  - Торговая Компания «Папа Карло»
+    </title>
+</head>
+<body>
+{% block content %}
+    <div class="container">
+    <div class="column is-12">
+    <div class="container is-fluid">
+        <br>
+        <div class="columns center">
+            <div class="column is-3">
+                <div class="field center">
+                    <a href="https://papakarlotools.ru/">
+                         <img src="{% static '/img/papa-logo.png' %}" alt="PapaKarloLogo" width="190">
+                    </a>
+                </div>
+                <div class="field center">
+                    <h4 class="title is-4">Драутуйте</h4><br>
+                </div>
+
+                <form method="post" novalidate>
+                    {% csrf_token %}
+                    {% for hidden_field in form.hidden_fields %}
+                        {{ hidden_field }}
+                    {% endfor %}
+
+                    {% if form.non_field_errors %}
+                        <div class="notification is-danger  is-light">
+                            {% for error in form.non_field_errors %}
+                                {{ error }}
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    {% for field in form.visible_fields %}
+                        <div class="field">
+                            {% if form.is_bound %}
+                                {% if field.errors %}
+                                    {% render_field field class="input is-danger" %}
+                                    {% for error in field.errors %}
+                                        <p class="help is-danger">
+                                            {{ error }}
+                                        </p>
+                                    {% endfor %}
+                                {% else %}
+                                    {% render_field field class="input is-success" %}
+                                {% endif %}
+                            {% else %}
+                                {% render_field field class="input is-medium" placeholder=field.label %}
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    <div class="field">
+                        <p class="control has-text-right">
+                            <button class="button is-success is-medium">
+                                Я свой !
+                            </button>
+                        </p>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    </div>
+    </div>
+    <br>
+    <br>
+{% endblock %}
+{% include "footer.html" %}
+<script src="{% static '/js/vue.min.js' %}"></script>
+<script src="{% static '/js/buefy.min.js' %}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Сборка заказ №{{ order_id }}{% endblock %}
+{% block extra_css %}
+{#        <link rel="stylesheet" href="/static/debug.css">#}
+    <meta property="og:site_name" content="Торговая Компания «Папа Карло»" />
+    <meta property="og:title" content="Сборка заказ №{{ order_id }}" />
+    <meta property="og:description " content="Запись сборки Вашего заказа на сайте https://papakarlotools.ru" />
+    <meta property='og:type' content="video.movie" />
+    <meta property="og:url" content="https://video.papakarlotools.ru/?v={{ short_url }}" />
+    <meta property="og:image" content="{% static '/img/papa_screen.png' %}" />
+{% endblock %}
+
+{% block single_video %}
+{% include "header.html" %}
+{% endblock %}
+
+{% block content %}
+<div class="container">
+        <div class="column is-12">
+    {% for video in result %}
+        <div class="columns is-centered">
+            <div class="column is-two-thirds">
+                <article class="tile is-child box has-background-white-ter">
+                    Заказ номер <strong>{{ video.order_id }}</strong>.<br>
+                    Записан <strong>{{ video.rec_time }}</strong>
+                    <figure class="image is-16by9">
+                        <video
+                                id="video-{{ video.id }}"
+                                class="video-js vjs-big-play-centered vjs-fill has-ratio"
+                                controls
+                                preload="auto"
+                                data-setup={}
+                        >
+                            <source src="{{ cdn_url }}/records/{{ video.filename }}.mp4"
+                                    type="video/mp4"/>
+
+                        </video>
+                    </figure>
+                </article>
+            </div>
+        </div>
+    {% endfor %}
+        </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+    <script>
+    const app = new Vue({
+            delimiters: ['[[', ']]'],
+            el: '#app',
+            data: {
+            },
+        });
+
+    </script>
+{% endblock %}

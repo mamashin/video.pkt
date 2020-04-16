@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% load static %}
+{% block title %}Онлайн трансляция сборки заказов{% endblock %}
+{% block extra_css %}
+    {#    <link rel="stylesheet" href="/static/debug.css">#}
+    <meta property="og:site_name" content="Торговая Компания «Папа Карло»" />
+    <meta property="og:title" content="Онлайн трансляция сборки заказов" />
+    <meta property="og:description " content="Здесь можно в режиме реального времени посмотреть как собираются заказы
+    которы были сделаны в нашем интернет магазине по адресу - https://papakarlotools.ru/" />
+    <meta property='og:type' content="video.movie" />
+    <meta property="og:url" content="https://video.papakarlotools.ru/" />
+    <meta property="og:image" content="{% static '/img/papa_screen.png' %}" />
+{% endblock %}
+
+{% block single_video %}
+{% include "header.html" %}
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="column is-12">
+            <div class="columns is-centered">
+                <div class="column is-6" v-for="cam of vcams" v-if="vcams.length !== 0">
+                    <article class="tile is-child box"
+                             :class="cam.stream ? 'has-background-grey-lighter':'has-background-gray'">
+                        <h1 class="subtitle">[[ cam.name ]]</h1>
+                        <figure class="image is-4by3">
+                            <video-player :cam="cam"/>
+                        </figure>
+                    </article>
+                </div>
+                <div class="column is-6" v-if="vcams.length === 0">
+                    <b-message type="is-info" has-icon>
+                        <p>В данный момент нет онлайн трансляции. Заходите позже, будет интерестно :)</p>
+                    </b-message>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+{% block extra_js %}
+    <script type="text/x-template" id="video-template">
+        <video
+                :id="'cam-' + cam.id"
+                class="video-js vjs-big-play-centered vjs-fill has-ratio"
+                ref="videoPlayer"
+        >
+            <source :src="'{{ cdn_url }}/hls/sub-' + cam.id +'.m3u8'"
+                    type="application/x-mpegURL"/>
+        </video>
+    </script>
+
+    <script>
+        Vue.component('video-player', {
+            name: "VideoPlayer",
+            template: '#video-template',
+            props: ['cam'],
+            data() {
+                return {
+                    player: null
+                }
+            },
+            mounted() {
+                self = this;
+                this.player = videojs(this.$refs.videoPlayer, {
+                    autoplay: 'muted',
+                    preload: 'none',
+                    crossOrigin: 'use-credentials',
+                    html5: {
+                        hls: {
+                            withCredentials: true,
+                            overrideNative: true
+                        },
+                        nativeAudioTracks: false,
+                        nativeVideoTracks: false
+                    }
+                });
+                this.player.ready(function () {
+                 });
+            },
+            beforeDestroy() {
+                if (this.player) {
+                    this.player.dispose()
+                }
+            }
+        });
+
+        const app = new Vue({
+            delimiters: ['[[', ']]'],
+            el: '#app',
+            data: {
+                vcams: [],
+                order: '',
+                order_status: false,
+                input_type: 'is-info',
+                loading: false,
+                input_order_dis: false,
+            },
+            methods: {
+                postData: FetchFun,
+                getData: async function () {
+                    await fetch('/api/videocam/').then(response => response.json())
+                        .then(data => this.vcams = data);
+                },
+            },
+            computed: {},
+            beforeMount() {
+                this.getData();
+            },
+            mounted() {
+            },
+            created: function () {
+            }
+        });
+    </script>
+{% endblock %}

@@ -1,0 +1,9 @@
+SECRET_KEY='xxx'
+
+DJANGO_DEBUG=True
+
+RTPM_SERVER=xxx.papakarlotools.ru
+RTPM_CTRL_URL=http://xxx.papakarlotools.ru/control/record
+CARM_URL=https://xxx.papakarlotools.ru
+
+ALLOWED_HOSTS=video.papakarlosochi.ru

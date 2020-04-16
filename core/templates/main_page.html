@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Список всех камер{% endblock %}
+{% block extra_css %}
+{#    <link rel="stylesheet" href="/static/debug.css">#}
+{% endblock %}
+{% block content %}
+
+    <div class="container">
+        <div class="column is-4 is-offset-4">
+            <b-field :type="input_type" v-if="!now_record">
+                <b-input placeholder="Номер заказа"
+                         size="is-medium"
+                         type="number"
+                         v-on:keyup.native.enter="order_enter"
+                         v-on:click.native="on_input_click"
+                         :loading="loading"
+                         :disabled="input_order_dis"
+                         v-model="order"></b-input>
+            </b-field>
+            <b-field v-if="now_record">
+            <button class="button is-danger is-medium">
+                <b-icon icon="camera"></b-icon>
+                <span>Идет запись заказа N <strong>[[ order ]]</strong></span>
+            </button>
+                </b-field>
+
+        </div>
+    </div>
+
+    <section class="hero center">
+        <div class="hero-body">
+
+            <div class="tile is-ancestor" v-if="vcams">
+
+                <div v-for="cam of vcams">
+                    <div class="tile">
+                        <div class="title">
+                            <article class="tile is-child box"
+                                     :class="cam.stream ? 'has-background-warning':'has-background-gray'">
+                                <div class="tile is-ancestor">
+                                    <div class="tile is-vertical is-parent">
+                                        <h1 class="title"><a :href="'/cam/' + cam.id + '/'">[[ cam.name ]]</a>
+                                        </h1>
+                                        <div class="tile is-child box"
+                                             :class="cam.record ? 'has-background-danger':'has-background-dark-lighter'">
+                                            <video-player :cam="cam"/>
+                                        </div>
+                                        <div class="tile is-child ">
+                                            <b-field>
+                                                <b-switch size="is-medium"
+                                                          :id="'record-button-' + cam.id"
+                                                          type="is-success"
+                                                          :disabled="!cam.record && !allow_record"
+                                                          @input="on_record_click(cam.id, cam.record)"
+                                                          v-model="cam.record">REC
+                                                </b-switch>
+                                                <b-switch size="is-medium"
+                                                          type="is-success"
+                                                          @input="postData('videocam/' + cam.id, 'PUT', {'stream': cam.stream})"
+                                                          v-model="cam.stream">Online
+                                                </b-switch>
+                                            </b-field>
+                                        </div>
+                                    </div>
+                                </div>
+                            </article>
+                        </div>
+                        <p>&nbsp;&nbsp;</p>
+                    </div>
+
+                </div> <!-- end v-for -->
+            </div>
+        </div>
+    </section>
+
+{% endblock %}
+{% block extra_js %}
+
+    <script type="text/x-template" id="video-template">
+        <video
+                :id="'cam-' + cam.id"
+                class="video-js vjs-big-play-centered vjs-fluid"
+{#                            width="704"#}
+{#                            height="576"#}
+                {#            data-setup='{"fluid": true, "autoplay": true}'#}
+                ref="videoPlayer"
+        >
+            <source :src="'{{ cdn_url }}/hls/sub-' + cam.id +'.m3u8'"
+                    type="application/x-mpegURL"/>
+        </video>
+    </script>
+
+    <script>
+        Vue.component('video-player', {
+            name: "VideoPlayer",
+            template: '#video-template',
+            props: ['cam'],
+            data() {
+                return {
+                    player: null
+                }
+            },
+            mounted() {
+                self = this;
+                this.player = videojs(this.$refs.videoPlayer, {
+                    autoplay: 'muted',
+                    controls: true,
+                    {#fluid: true#}
+                });
+
+                this.player.ready(function () {
+                    {#var promise = self.player.play();#}
+                    //this.player.autoplay('mute');
+                     {#this.player.autoplay('muted');#}
+                    console.log("kuKu");
+                });
+            },
+            beforeDestroy() {
+                if (this.player) {
+                    this.player.dispose()
+                }
+            }
+        });
+
+        const app = new Vue({
+            delimiters: ['[[', ']]'],
+            el: '#app',
+            data: {
+                vcams: null,
+                order: '',
+                order_status: false,
+                input_type: 'is-info',
+                loading: false,
+                input_order_dis: false,
+                allow_record: false,
+                now_record: false
+            },
+            methods: {
+                postData: FetchFun,
+                async getData() {
+                    await fetch('/api/videocam/').then(response => response.json())
+                        .then(data => this.vcams = data);
+                     for (let i = 0; i < this.vcams.length; i++) {
+                         if (this.vcams[i].record){
+                             this.now_record = this.vcams[i].record;
+                             this.allow_record = false;
+                             await FetchFun('last-order', 'POST', {'cam_id': this.vcams[i].id})
+                             .then(data => this.order = data.order_id);
+                             break;
+                         }
+                }
+                },
+                record_stop_click() {
+                this.$buefy.dialog.confirm({
+                    title: 'Выбрано файлов - ' + this.checkedRows.length,
+                    message: 'Отправить эти ролики клиенту ?' ,
+                    cancelText: 'Нет',
+                    confirmText: 'Да',
+                    type: 'is-success',
+                    onConfirm: () => this.$buefy.toast.open('Отпрвлено !')
+                })},
+                on_input_click() {
+                    this.input_type = 'is-info';
+                    this.allow_record = false;
+                    this.order = '';
+                },
+                on_record_click(cam_id, cam_record) {
+                    this.postData('videocam/' + cam_id, 'PUT', {'record': cam_record, 'order': this.order});
+                    this.now_record = !this.now_record;
+                    if (!this.now_record){
+                        this.order = '';
+                        this.input_type = 'is-info';
+                    }
+                    this.allow_record = false;
+                    console.log("Clik!");
+                    if (!this.now_record){
+                    this.$buefy.dialog.confirm({
+                    {#title: 'Отправить записанное видео клиенту ?',#}
+                    message: 'Отправить сразу записанное видео клиенту ?' ,
+                    cancelText: 'Позже',
+                    confirmText: 'Да',
+                    type: 'is-success',
+                    onConfirm: () => this.$buefy.toast.open({ message: 'Отпрвленно !', type: 'is-success'}),
+                    onCancel: () => this.$buefy.toast.open({ message: 'Сохранили в архив', type: 'is-info'})
+                })}
+                },
+                async order_enter(event) {
+                    this.loading = true;
+                    this.input_order_dis = true;
+                    await FetchFun('order', 'POST', {'order': parseInt(this.order)}).then(data => this.order_status = data.status)
+                        .catch(error => console.error(error));
+                    this.loading = false;
+                    this.input_order_dis = false;
+
+                    if (this.order_status) {
+                        this.input_type = 'is-success';
+                        this.allow_record = true;
+
+                    } else {
+                        this.input_type = 'is-danger';
+                    }
+                }
+            },
+            computed: {
+                is_order_input() {
+                    return this.order.trim()
+                }
+            },
+            beforeMount() {
+                this.getData();
+            },
+            mounted() {
+            },
+            created: function () {
+            }
+        });
+    </script>
+{% endblock %}

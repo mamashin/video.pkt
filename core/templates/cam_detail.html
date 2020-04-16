@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Информация о камере{% endblock %}
+{% block extra_css %}
+    {#<link rel="stylesheet" href="/static/debug.css">#}
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <div class="column is-12">
+            <div class="columns is-centered">
+                <div class="column is-two-thirds">
+                    <article class="tile is-child box has-background-white-bis">
+                        <strong>{{ result.name }}</strong>
+                        <figure class="image is-16by9">
+                            <video
+                                    id="video-{{ result.id }}"
+                                    class="video-js vjs-big-play-centered vjs-fill has-ratio"
+                                    autoplay
+                                    preload="auto"
+                                    data-setup={}
+                            >
+                                <source src="/video/hls/main-{{ result.id }}.m3u8" type="application/x-mpegURL"/>
+                            </video>
+                        </figure>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </div>
+    <br><br>
+{% endblock %}
+{% block extra_js %}
+    <script>
+        const app = new Vue({
+            delimiters: ['[[', ']]'],
+            el: '#app',
+            data: {},
+        });
+    </script>
+    <script>
+        videojs('video-{{ result.id }}', {
+            autoplay: true,
+            controls: true,
+            crossOrigin: 'use-credentials',
+            html5: {
+                hls: {
+                    withCredentials: true,
+                    overrideNative: true
+                },
+                nativeAudioTracks: false,
+                nativeVideoTracks: false
+            }
+        });
+    </script>
+{% endblock %}

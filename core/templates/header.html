@@ -1,0 +1,20 @@
+{% load static %}
+<div class="container">
+    <div class="column is-8 is-offset-2">
+        <section class="hero center">
+            <a href="https://papakarlotools.ru/">
+                <img src="{% static '/img/papa-logo.png' %}" alt="PapaKarloLogo" width="190">
+            </a>
+            {% if get_video %}
+                <b-tag type="is-info" size="is-medium" rounded>
+                    Запись сборки Вашего заказа
+                </b-tag>
+            {% endif %}
+            {% if not get_video %}
+                <b-tag type="is-warning" size="is-medium" rounded>
+                    Онлайн трансляция сборки Ваших заказов
+                </b-tag>
+            {% endif %}
+        </section>
+    </div>
+</div>
