@@ -22,8 +22,9 @@ class CamRecordLogAdmin(admin.ModelAdmin):
 
 @admin.register(CamRec)
 class CamRecAdmin(admin.ModelAdmin):
+    search_fields = ['order_id', ]
     list_display = ('cam_name', 'order_id', 'filename', 'duration_human', 'size_human', 'short_url',
-                    'finish', 'publish', 'rec_time')
+                    'finish', 'publish', 'rec_time', 'open')
 
     @staticmethod
     def cam_name(obj):

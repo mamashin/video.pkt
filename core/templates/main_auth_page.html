@@ -1,73 +1,93 @@
 {% extends "base.html" %}
 {% block title %}Запись сбоки заказа{% endblock %}
 {% block extra_css %}
-    {#    <link rel="stylesheet" href="/static/debug.css">#}
+    {#        <link rel="stylesheet" href="/static/debug.css">#}
 {% endblock %}
 {% block content %}
-
+    {% include "order_modal.html" %}
+    <b-loading is-full-page="true" :active.sync="isLoading" can-cancel="false"></b-loading>
     <div class="container">
-        <div class="column is-4 is-offset-4">
-            <b-field :type="input_type" v-if="!now_record">
-                <b-input placeholder="Номер заказа"
-                         size="is-medium"
-                         type="number"
-                         v-on:keyup.native.enter="order_enter"
-                         v-on:click.native="on_input_click"
-                         :loading="loading"
-                         :disabled="input_order_dis"
-                         v-model="order"></b-input>
-            </b-field>
-            <b-field v-if="now_record">
-                <button class="button is-danger is-medium">
-                    <b-icon icon="camera"></b-icon>
-                    <span>Идет запись заказа N <strong>[[ order ]]</strong></span>
-                </button>
-            </b-field>
+        <div class="column is-12">
+            <div class="container is-fluid">
+                <div class="columns center">
+                    <div class="column is-3">
+                        <b-field>
+                            <b-button icon-left="format-list-bulleted"
+                                      type="is-success"
+                                      @click="isOrderModalActive = true"
+                                      class="is-medium"
+                                      outlined
+                                      v-if="icon_click"
+                                      title="Состав заказа"
+                            >
+                            </b-button>
+                            <b-field :type="input_type">
+                                <b-input placeholder="Номер заказа"
+                                         size="is-medium"
 
+                                         v-if="!now_record"
+                                         type="number"
+                                         v-on:keyup.native.enter="order_enter"
+                                         v-on:click.native="on_input_click"
+                                         :loading="loading"
+                                         :disabled="input_order_dis"
+                                         v-model="order"></b-input>
+                            </b-field>
+
+                            <b-button class="button is-danger is-medium" v-if="now_record">
+                                <b-icon icon="camera"></b-icon>
+                                <span>Идет запись заказа N <strong>[[ order ]]</strong></span>
+                            </b-button>
+                        </b-field>
+
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
+
     <br>
     <div class="container">
-    <div class="column is-12">
-        <div class="columns is-centered">
-            <div class="column is-one-third" v-for="cam of vcams">
-                <div class="title">
-                    <article class="tile is-child box"
-                             :class="cam.stream ? 'has-background-warning':'has-background-white-ter'">
-                        <div class="tile is-ancestor">
-                            <div class="tile is-vertical is-parent">
-                                <h1 class="subtitle"><a :href="'/cam/' + cam.id + '/'">[[ cam.name ]]</a>
-                                </h1>
-                                <div class="tile is-child box"
-                                     :class="cam.record ? 'has-background-danger':'has-background-dark-lighter'">
-                                    <figure class="image is-4by3">
-                                        <video-player :cam="cam"/>
-                                    </figure>
-                                </div>
-                                <div class="tile is-child ">
-                                    <b-field>
-                                        <b-switch size="is-medium"
-                                                  :id="'record-button-' + cam.id"
-                                                  type="is-success"
-                                                  :disabled="!cam.record && !allow_record"
-                                                  @input="on_record_click(cam.id, cam.record)"
-                                                  v-model="cam.record">REC
-                                        </b-switch>
-                                        <b-switch size="is-medium"
-                                                  type="is-success"
-                                                  @input="postData('videocam/' + cam.id, 'PUT', {'stream': cam.stream})"
-                                                  v-model="cam.stream">Online
-                                        </b-switch>
-                                    </b-field>
+        <div class="column is-12">
+            <div class="columns is-centered">
+                <div class="column is-one-third" v-for="cam of vcams">
+                    <div class="title">
+                        <article class="tile is-child box"
+                                 :class="cam.stream ? 'has-background-warning':'has-background-white-ter'">
+                            <div class="tile is-ancestor">
+                                <div class="tile is-vertical is-parent">
+                                    <h1 class="subtitle"><a :href="'/cam/' + cam.id + '/'">[[ cam.name ]]</a>
+                                    </h1>
+                                    <div class="tile is-child box"
+                                         :class="cam.record ? 'has-background-danger':'has-background-dark-lighter'">
+                                        <figure class="image is-4by3">
+                                            <video-player :cam="cam"/>
+                                        </figure>
+                                    </div>
+                                    <div class="tile is-child ">
+                                        <b-field>
+                                            <b-switch size="is-medium"
+                                                      :id="'record-button-' + cam.id"
+                                                      type="is-success"
+                                                      :disabled="!cam.record && !allow_record"
+                                                      @input="on_record_click(cam.id, cam.record)"
+                                                      v-model="cam.record">REC
+                                            </b-switch>
+                                            <b-switch size="is-medium"
+                                                      type="is-success"
+                                                      @input="postData('videocam/' + cam.id, 'PUT', {'stream': cam.stream})"
+                                                      v-model="cam.stream">Online
+                                            </b-switch>
+                                        </b-field>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    </article>
-                </div>
-                <p>&nbsp;&nbsp;</p>
-            </div> <!-- end v-for -->
+                        </article>
+                    </div>
+                    <p>&nbsp;&nbsp;</p>
+                </div> <!-- end v-for -->
+            </div>
         </div>
-    </div>
     </div>
 
 {% endblock %}
@@ -79,7 +99,7 @@
                 :name="'cam-' + cam.id"
                 class="video-js vjs-big-play-centered vjs-fill has-ratio"
                 ref="videoPlayer"
-{#                data-setup="{}"#}
+                {#                data-setup="{}"#}
         >
             <source :src="'{{ cdn_url }}/hls/sub-' + cam.id +'.m3u8'"
                     type="application/x-mpegURL"/>
@@ -103,7 +123,7 @@
                     controls: true,
                     preload: 'none',
                     {% if not carm %}
-                    crossOrigin: 'use-credentials',
+                        crossOrigin: 'use-credentials',
                     {% endif %}
                     html5: {
                         hls: {
@@ -134,13 +154,21 @@
             data: {
                 vcams: null,
                 order: '',
+                order_info: {},
                 order_status: false,
                 input_type: 'is-info',
+                items_table: {},
                 loading: false,
                 input_order_dis: false,
                 allow_record: false,
                 now_record: false,
-                record_detail: ''
+                record_detail: '',
+                icon_click: false,
+                order_icon: '',
+                isOrderModalActive: false,
+                rec_status: false,
+                send_result: {},
+                isLoading: false
             },
             methods: {
                 postData: FetchFun,
@@ -157,66 +185,122 @@
                         }
                     }
                 },
-                record_stop_click() {
-                    this.$buefy.dialog.confirm({
-                        title: 'Выбрано файлов - ' + this.checkedRows.length,
-                        message: 'Отправить эти ролики клиенту ?',
-                        cancelText: 'Нет',
-                        confirmText: 'Да',
-                        type: 'is-success',
-                        onConfirm: () => this.$buefy.toast.open('Отпрвлено !')
-                    })
-                },
                 on_input_click() {
                     this.input_type = 'is-info';
                     this.allow_record = false;
                     this.order = '';
+                    this.order_icon = "";
+                    this.icon_click = false;
                 },
-                async send_video(data){
+                async send_video_1(data) {
                     await FetchFun('sendorder', 'POST', data)
-                            .catch(error => console.error(error));
+                        .catch(error => console.error(error));
                     this.$buefy.toast.open({message: 'Отпрвленно !', type: 'is-success'});
                     this.record_detail = '';
-                    },
+                },
+
+                async send_video(data) {
+                    this.isLoading = true;
+                    await FetchFun('sendorder', 'POST', data).then(data => this.send_result = data)
+                        .catch(error => console.error(error));
+                    this.isLoading = false;
+                    this.record_detail = '';
+                    if (this.send_result.status) {
+                        this.$buefy.toast.open({
+                            message: 'Отпрвлено !',
+                            type: 'is-success'
+                        });
+                    }
+                    if (!this.send_result.status) {
+                        this.$buefy.toast.open({
+                            message: 'Oops! Что-то пошло не так :(',
+                            type: 'is-danger'
+                        });
+                    }
+                },
+
                 async on_record_click(cam_id, cam_record) {
+                    this.rec_status = false;
                     await this.postData('videocam/' + cam_id, 'PUT', {'record': cam_record, 'order': this.order})
                         .then(data => this.record_detail = data)
                         .catch(error => console.error(error));
-                    this.now_record = !this.now_record;
-                    if (!this.now_record) {
-                        this.order = '';
-                        this.input_type = 'is-info';
-                    }
-                    this.allow_record = false;
-                    console.log("Clik!");
-                    console.log(this.record_detail);
-                    if (!this.now_record) {
-                        this.$buefy.dialog.confirm({
-                            {#title: 'Отправить записанное видео клиенту ?',#}
-                            message: 'Отправить сразу записанное видео клиенту ?',
-                            cancelText: 'Позже',
-                            confirmText: 'Да',
-                            type: 'is-success',
-                            onConfirm: () => this.send_video(this.record_detail),
-                            onCancel: () => this.$buefy.toast.open({message: 'Сохранили в архив', type: 'is-info'})
+
+                    this.rec_status = this.record_detail.status;
+
+                    if (this.rec_status === true) {
+                        this.now_record = !this.now_record;
+                        if (!this.now_record) {
+                            this.order = '';
+                            this.input_type = 'is-info';
+                        }
+                        this.allow_record = false;
+                        console.log("Clik!");
+                        if (!this.now_record) {
+                            this.$buefy.dialog.confirm({
+                                message: 'Отправить сразу записанное видео клиенту ?',
+                                cancelText: 'Позже',
+                                confirmText: 'Да',
+                                type: 'is-success',
+                                onConfirm: () => this.send_video(this.record_detail),
+                                onCancel: () => this.$buefy.toast.open({message: 'Сохранили в архив', type: 'is-info'})
+                            })
+                        }
+                    } else {
+                        for (i in this.vcams) {
+                            if (this.vcams[i]['id'] === cam_id) {
+                                this.vcams[i]['record'] = false;
+                            }
+                        }
+                        this.$buefy.dialog.alert({
+                            title: 'Ошибка',
+                            message: 'Что-то пошло не так и запись заказа не началась. Попробуйте перегрузить сервер ' +
+                                '(вверху справа красная кнопка) !',
+                            type: 'is-danger',
+                            hasIcon: true,
+                            icon: 'circle',
+                            ariaRole: 'alertdialog',
+                            ariaModal: true
                         })
                     }
                 },
                 async order_enter(event) {
                     this.loading = true;
                     this.input_order_dis = true;
-                    await FetchFun('order', 'POST', {'order': parseInt(this.order)}).then(data => this.order_status = data.status)
+                    await FetchFun('order', 'POST', {'order': parseInt(this.order)}).then(data => this.order_info = data)
                         .catch(error => console.error(error));
                     this.loading = false;
                     this.input_order_dis = false;
 
+                    this.order_status = this.order_info.status;
+
                     if (this.order_status) {
+                        this.order_info = this.order_info.order;
                         this.input_type = 'is-success';
                         this.allow_record = true;
-
+                        this.icon_click = true;
+                        this.order_icon = "view-dashboard";
+                        this.items_table = this.order_info.basketItems;
                     } else {
                         this.input_type = 'is-danger';
+                        this.icon_click = false;
                     }
+                },
+                reload_srv() {
+                    this.$buefy.dialog.confirm({
+                        title: 'Перезагрузка',
+                        message: 'Если при старте или стопе записи выходит ошибка - давайте перезагрузим сервер, обычно это ' +
+                            'помогает, если уже перегружали но все равно ошибка - сообщите об этом директору.',
+                        confirmText: 'Перегружаем!',
+                        cancelText: 'Не-не, без меня',
+                        type: 'is-danger',
+                        hasIcon: true,
+                        onConfirm: async () => {
+                            console.log("Press!");
+                            this.$buefy.toast.open('Теперь нужно подожать 30 сек');
+                            await FetchFun('reload', 'POST', {'reload': true});
+                            document.location.reload(true);
+                        }
+                    })
                 }
             },
             computed: {
@@ -234,10 +318,10 @@
         });
     </script>
     <script type="text/javascript">
-      videojs.Hls.xhr.beforeRequest = function(options) {
-          var csrftoken = getCookie("csrftoken");
-        options.headers = { 'X-CSRFToken': csrftoken };
-        return options
-      };
+        videojs.Hls.xhr.beforeRequest = function (options) {
+            var csrftoken = getCookie("csrftoken");
+            options.headers = {'X-CSRFToken': csrftoken};
+            return options
+        };
     </script>
 {% endblock %}

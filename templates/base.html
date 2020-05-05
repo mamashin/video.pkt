@@ -5,9 +5,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {% include "favicon.html" %}
-    <link rel="stylesheet" href="{% static '/css/buefy.min.css' %}" />
-    <link rel="stylesheet" href="{% static '/css/materialdesignicons.min.css' %}" />
-    <link rel="stylesheet" href="{% static '/css/video-js.min.css' %}" />
+    <link rel="stylesheet" href="{% static '/css/buefy.min.css' %}"/>
+    <link rel="stylesheet" href="{% static '/css/materialdesignicons.min.css' %}"/>
+    <link rel="stylesheet" href="{% static '/css/video-js.min.css' %}"/>
     <style>
         .center {
             display: flex;
@@ -15,7 +15,7 @@
             align-items: center;
         }
     </style>
-{# <link rel="stylesheet" href="static/debug.css">#}
+    {# <link rel="stylesheet" href="static/debug.css">#}
     {% block extra_css %}{% endblock %}
 
     <title>
@@ -25,51 +25,59 @@
 
 <body>
 <div id="app">
-{% if user.is_authenticated %}
-<template>
-    <b-navbar :fixed-top="true" >
-        <template slot="brand">
-            <b-navbar-item href="/">
-                <img
-                    src="{% static '/img/papa-logo.png' %}"
-                    alt="PapaLogo"
-                >
-            </b-navbar-item>
+    {% if user.is_authenticated %}
+        <template>
+            <b-navbar :fixed-top="true">
+                <template slot="brand">
+                    <b-navbar-item href="/">
+                        <img
+                                src="{% static '/img/papa-logo.png' %}"
+                                alt="PapaLogo"
+                        >
+                    </b-navbar-item>
+                </template>
+                <template slot="start">
+                    <b-navbar-item href="/">
+                        Начало
+                    </b-navbar-item>
+                    <b-navbar-item href="/?arch">
+                        Архив
+                    </b-navbar-item>
+                    {% block extend_menu %}
+                    {% endblock %}
+                </template>
+                <template slot="end">
+                    {% if main_page %}
+                        <b-navbar-item tag="div">
+                            <div class="buttons">
+                                <b-button type="is-danger" title="Рестарт сервера стриминга" @click="reload_srv">
+                                    <b-icon icon="autorenew"></b-icon>
+                                </b-button>
+                            </div>
+                        </b-navbar-item>
+                    {% endif %}
+                    <b-navbar-item tag="div">
+                        <div class="buttons">
+                            <a class="button is-light" href="/logout" title="Выход">
+                                <b-icon icon="logout"></b-icon>
+                            </a>
+                        </div>
+                    </b-navbar-item>
+                </template>
+
+            </b-navbar>
         </template>
-        <template slot="start">
-            <b-navbar-item href="/">
-                Начало
-            </b-navbar-item>
-            <b-navbar-item href="/?arch">
-                Архив
-            </b-navbar-item>
-            {% block extend_menu %}
-            {% endblock %}
-        </template>
+    {% endif %}
 
-            <template slot="end">
-            <b-navbar-item tag="div">
-                <div class="buttons">
-                    <a class="button is-light" href="/logout" title="Выход">
-                        <b-icon icon="logout"></b-icon>
-                    </a>
-                </div>
-            </b-navbar-item>
-        </template>
+    {% block single_video %}
+    {% endblock %}
 
-    </b-navbar>
-</template>
-{% endif %}
-
-{% block single_video %}
-{% endblock %}
-
-{% block content %}
-{% endblock %}
-{% include "footer.html" %}
+    {% block content %}
+    {% endblock %}
+    {% include "footer.html" %}
 </div>
 <script src="{% static '/js/vue.min.js' %}"></script>
-<script src="{% static '/js/buefy.min.js' %}" ></script>
+<script src="{% static '/js/buefy.min.js' %}"></script>
 <script src="{% static '/js/video.min.js' %}"></script>
 <script src="{% static '/js/videojs-ie8.min.js' %}"></script>
 <script>
@@ -79,6 +87,7 @@
         const parts = value.split("; " + name + "=");
         if (parts.length === 2) return parts.pop().split(";").shift();
     }
+
     function FetchFun(url, type, data) {
         return fetch('/api/' + url + '/',
             {
@@ -89,9 +98,11 @@
                     "X-CSRFToken": getCookie("csrftoken"),
                     "Accept": "application/json"
                 },
-                body:  JSON.stringify(data)
+                body: JSON.stringify(data)
             }
-        ).then(response => response.json()).then((responseJson)=>{return responseJson});
+        ).then(response => response.json()).then((responseJson) => {
+            return responseJson
+        });
     }
 </script>
 

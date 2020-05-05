@@ -14,14 +14,16 @@ from decouple import config
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
 from core.api.permissions import SuperuserAccessPermission, OnlySuperuserRW
 from .serializers import VideoCamSerializer, VideoRecSerializer, VideoCamSerializerAnon
-from core.utils import rtmp_control
+from core.utils import rtmp_control, rq_send, waz_app_send, send_mail
 from core.models import VideoCam, CamRec
+from core.bitrix import btx_get_order, btx_update_order
 import time
 import re
 from django.utils.http import urlquote
 from pathlib import Path
 import short_url
 import logging
+from django.db.models import Value, BooleanField
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +48,7 @@ class VideoCamViewSet(viewsets.ModelViewSet):
         instance = self.get_object()
         serializer = self.get_serializer(instance, data=request.data, partial=partial)
         serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        # self.perform_update(serializer)
 
         if 'order' in request.data:
             try:
@@ -66,7 +68,7 @@ class VideoCamViewSet(viewsets.ModelViewSet):
                                           user=self.request.user
                                           )
                 else:
-                    return Response({'status': False}, status=400)
+                    return Response({'status': False}, status=200)
 
             if not request.data['record']:
                 rec_file, rec_path = rtmp_control('stop', instance.id, 'main')
@@ -75,16 +77,25 @@ class VideoCamViewSet(viewsets.ModelViewSet):
                     if rec:
                         rec.finish = True
                         rec.save()
-                        return Response(CamRec.objects.filter(id=rec.id).values())
+                        out = CamRec.objects.filter(id=rec.id).values()
+                        self.perform_update(serializer)
+                        # Add status field for front-end
+                        return Response(CamRec.objects.filter(id=rec.id).values().
+                                        annotate(status=Value(True, output_field=BooleanField())).first())
                 else:
-                    return Response({'status': False}, status=400)
+                    return Response({'status': False}, status=200)
 
         if getattr(instance, '_prefetched_objects_cache', None):
             # If 'prefetch_related' has been applied to a queryset, we need to
             # forcibly invalidate the prefetch cache on the instance.
             instance._prefetched_objects_cache = {}
 
-        return Response(serializer.data)
+        self.perform_update(serializer)
+
+        # Add status field for front-end
+        out = serializer.data
+        out['status'] = True
+        return Response(out)
 
 
 class VideoRecViewSet(viewsets.ModelViewSet):
@@ -97,17 +108,22 @@ class CheckOrder(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        time.sleep(1)
         if 'order' not in request.data:
             return Response({"status": False})
         order_id = request.data['order']
         if type(order_id) != int:
             return Response({"status": False})
 
-        if order_id < 1000:
-            return Response({"status": False})
+        btx = btx_get_order(order_id)
+        if not btx:
+            return Response({"status": False}, status=200)
 
-        return Response({"status": True})
+        resp = {
+            "status": True,
+            "order": btx.json()['result']['order']
+        }
+
+        return Response(resp)
 
 
 class GetOrder(APIView):
@@ -144,16 +160,27 @@ class SendOrder(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        if not type(request.data) == 'list':
-            Response({"status": False}, status=400)
-        for data in request.data:
+        request_data = []
+        if type(request.data) == dict:
+            request_data = [request.data]
+        if type(request.data) == list:
+            request_data = request.data
+        for data in request_data:
             valid_data = VideoRecSerializer(data=data)
             if not valid_data.is_valid():
-                Response({"status": False}, status=400)
+                return Response({"status": False}, status=200)
             camera_record = CamRec.objects.filter(id=data['id']).filter(publish=False).first()
             if camera_record:
                 camera_record.publish = True
                 camera_record.publish_time = timezone.localtime(timezone.now())
+
+                # Обновляем свойство заказа VIDEO_PACKING - прописываем туда ссылку на видео
+                btx_update_order.delay(camera_record.order_id, camera_record.pk)
+                # Отправляем нотификацию на тел клиента
+                waz_app_send.delay(camera_record.order_id, camera_record.pk)
+                # Отправляем нотификацию на почту
+                send_mail.delay(camera_record.order_id, camera_record.pk)
+
                 camera_record.save()
 
         return Response({"status": True}, status=200)
@@ -180,3 +207,20 @@ class GetVideo(APIView):
         response['X-Accel-Buffering '] = "no"
         response['X-Accel-Redirect'] = urlquote(uri)
         return response
+
+
+class SrvReload(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        if 'reload' in request.data:
+            for camrec in CamRec.objects.filter(finish=False):
+                camrec.delete()
+            for cam in VideoCam.objects.filter(record=True):
+                cam.record = False
+                cam.save()
+            if not settings.DEBUG:
+                rq_send('nginx-stream', 'reload')
+            time.sleep(2)
+            return Response({"status": True})
+        return Response({"status": False})

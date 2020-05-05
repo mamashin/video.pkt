@@ -1,0 +1,36 @@
+<b-modal :active.sync="isOrderModalActive">
+    <template>
+        <div class="modal-card" style="width: auto">
+            <header class="modal-card-head bg-info">
+                <i>Информация о заказе <strong>№[[ order_info.accountNumber ]]</strong></i>
+            </header>
+
+            <section class="modal-card-body">
+                <b-field grouped>
+                    <b-field>Дата заказа</b-field>
+                    <b-field class="label">[[ new Date(order_info.dateInsert).toLocaleDateString() ]]</b-field>
+                </b-field>
+
+                <b-table :data="items_table"
+                         bordered="true"
+                         striped="true"
+                >
+                    <template slot-scope="props">
+                        <b-table-column label="Код" width="40" numeric>
+                            [[ props.row.productId ]]
+                        </b-table-column>
+
+                        <b-table-column label="Наименование товара">
+                            [[ props.row.name ]]
+                        </b-table-column>
+
+                        <b-table-column label="Кол-во">
+                            [[ props.row.quantity ]]
+                        </b-table-column>
+                    </template>
+
+                </b-table>
+            </section>
+        </div>
+    </template>
+</b-modal>

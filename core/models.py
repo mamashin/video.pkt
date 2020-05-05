@@ -60,6 +60,8 @@ class CamRec(models.Model):
     publish_time = models.DateTimeField(verbose_name="Время публикации", null=True, blank=True)
     duration = models.IntegerField(blank=True, verbose_name="Длинна", null=True)
     size = models.IntegerField(blank=True, verbose_name="Размер", null=True)
+    open = models.IntegerField(blank=True, verbose_name="Просмотры", null=True, default=0)
+    publish_detail = models.IntegerField(blank=True, verbose_name="Подробности доставки", null=True, default=0)
     user = models.ForeignKey(
         User,
         models.CASCADE,

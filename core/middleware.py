@@ -7,7 +7,8 @@ from django.contrib.auth.backends import RemoteUserBackend
 
 
 class CustomRemoteUserMiddleware(RemoteUserMiddleware):
-    header = 'HTTP_AUTHUSER'
+    # header = 'HTTP_AUTHUSER'
+    header = 'REMOTE_USER'
 
 
 class CustomRemoteUserBackend(RemoteUserBackend):

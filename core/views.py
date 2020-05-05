@@ -8,6 +8,7 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from .models import VideoCam, CamRec
 import short_url
 from decouple import config
+from django.db.models.expressions import F
 
 
 class MainPage(ListView):
@@ -19,6 +20,7 @@ class MainPage(ListView):
     s_url = None
     carm_user = False
     arch = False
+    main_page = False
 
     def get_queryset(self):
         if self.request.user.is_authenticated and self.request.user.username == "carm":
@@ -30,13 +32,17 @@ class MainPage(ListView):
 
         if self.request.method == "GET" and 'v' in self.request.GET and len(self.request.GET['v']) == 5:
             video_qs = CamRec.objects.filter(short_url=self.request.GET['v']).filter(publish=True)
+            print(video_qs)
             if video_qs:
                 self.get_video = True
                 self.order_id = short_url.decode_url(self.request.GET['v'])
                 self.s_url = self.request.GET['v']
+                if not self.request.user.is_authenticated:
+                    video_qs.update(open=F('open') + 1)
                 return video_qs
 
         if self.request.user.is_authenticated:
+            self.main_page = True
             return VideoCam.objects.filter(enable=True)
 
         return VideoCam.objects.filter(stream=True)
@@ -63,6 +69,8 @@ class MainPage(ListView):
             context['get_video'] = True
             context['order_id'] = self.order_id
             context['short_url'] = self.s_url
+        if self.main_page:
+            context['main_page'] = True
         return context
 
 

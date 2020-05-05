@@ -26,4 +26,4 @@ class VideoRecSerializer(serializers.ModelSerializer):
     class Meta:
         model = CamRec
         fields = ('id', 'cam_name', 'order_id', 'short_url', 'finish', 'publish', 'rec_time_iso', 'duration', 'size',
-                  'duration_human', 'size_human', 'publish_time_iso', 'filename')
+                  'duration_human', 'size_human', 'publish_time_iso', 'filename', 'open')

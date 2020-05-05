@@ -31,6 +31,8 @@
     </b-navbar-item>
 {% endblock %}
 {% block content %}
+{% include "order_modal.html" %}
+<b-loading is-full-page="true" :active.sync="isLoading" can-cancel="false"></b-loading>
 
     <b-modal :active.sync="modalVideo" has-modal-card>
         <div class="modal-card">
@@ -48,7 +50,7 @@
                 :data="all_records"
                 paginated
                 pagination-simple
-                per-page="20"
+                per-page="25"
                 :selected.sync="selected"
                 {#            hoverable#}
                 checkable
@@ -59,15 +61,24 @@
                 {#            :row-class="(row, index) => row.duration_human && 'is-send'"#}
                 :checked-rows.sync="checkedRows"
                 {#            :current-page.sync="currentPage"#}
-                {#            default-sort="user.first_name"#}
-                backend-sorting
+                default-sort="row.rec_time_iso"
+{#                backend-sorting#}
                 aria-next-label="Next page"
                 aria-previous-label="Previous page"
                 aria-page-label="Page"
-                aria-current-label="Current page">
+                aria-current-label="Current page"
+                :mobile-cards="mcards"
+        >
 
             <template slot-scope="props">
                 <b-table-column field="order_id" label="Номер заказа" sortable searchable>
+                    <b-button icon-left="format-list-bulleted"
+                                      type="is-success"
+                                      @click="get_order_info(props.row.order_id)"
+                                      class="is-small"
+                                      outlined
+                                      title="Состав заказа"
+                    ></b-button>
                     [[ props.row.order_id ]]
                 </b-table-column>
 
@@ -92,6 +103,14 @@
                         <a :href="'/?v='+props.row.short_url">[[props.row.short_url]]</a>
                     </template>
                 </b-table-column>
+
+                <b-table-column field="open" label="Open" sortable centered>
+                    <template slot="header" slot-scope="{ column }">
+                        <b-icon icon="eye"></b-icon>
+                    </template>
+                    [[ props.row.open ]]
+                </b-table-column>
+
 
                 <b-table-column field="cam_name" label="Камера">
                     [[ props.row.cam_name ]]
@@ -123,7 +142,13 @@
                 isComponentModalActive: false,
                 modalVideo: false,
                 selected: {},
-                rerender: 1
+                rerender: 1,
+                isOrderModalActive: false,
+                order_info: {},
+                items_table: {},
+                send_result: {},
+                isLoading: false,
+                mcards: false
             },
             methods: {
                 modalClk() {
@@ -141,10 +166,23 @@
                     console.log("Clik!");
                 },
                 async send_video(data) {
-                    await FetchFun('sendorder', 'POST', data)
+                    this.isLoading = true;
+                    await FetchFun('sendorder', 'POST', data).then(data => this.send_result = data)
                         .catch(error => console.error(error));
-                    this.$buefy.toast.open('Отпрвлено !');
-                    {#wait(1000);#}
+                    this.isLoading = false;
+                    if (this.send_result.status){
+                        this.$buefy.toast.open({
+                             message: 'Отпрвлено !',
+                             type: 'is-success'
+                        });
+                    }
+                    if (!this.send_result.status){
+                        this.$buefy.toast.open({
+                             message: 'Oops! Что-то пошло не так :(',
+                             type: 'is-danger'
+                        });
+                    }
+
                     FetchFun('videorec', 'GET').then(data => this.all_records = data)
                         .catch(error => console.error(error));
                     this.checkedRows = [];
@@ -160,22 +198,30 @@
                         onConfirm: () => this.send_video(this.checkedRows)
                     })
                 },
-                async order_enter(event) {
+                async get_order_info(order_id) {
                     this.loading = true;
                     this.input_order_dis = true;
-                    await FetchFun('order', 'POST', {'order': parseInt(this.order)}).then(data => this.order_status = data.status)
+                    await FetchFun('order', 'POST', {'order': parseInt(order_id)}).then(data => this.order_info = data)
                         .catch(error => console.error(error));
                     this.loading = false;
-                    this.input_order_dis = false;
+
+                    this.order_status = this.order_info.status;
 
                     if (this.order_status) {
-                        this.input_type = 'is-success';
+                        this.order_info = this.order_info.order;
                         this.allow_record = true;
-
+                        this.icon_click = true;
+                        this.items_table = this.order_info.basketItems;
+                        this.isOrderModalActive = true;
                     } else {
-                        this.input_type = 'is-danger';
+                        this.$buefy.dialog.alert({
+                            title: 'Ошибка',
+                            message: 'Заказа с таким номером не существует. Что-то тут не так...',
+                            type: 'is-danger',
+                            hasIcon: true,
+                        })
                     }
-                }
+                },
             },
             beforeMount() {
                 FetchFun('videorec', 'GET').then(data => this.all_records = data)

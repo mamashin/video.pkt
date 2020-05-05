@@ -7,3 +7,14 @@ RTPM_CTRL_URL=http://xxx.papakarlotools.ru/control/record
 CARM_URL=https://xxx.papakarlotools.ru
 
 ALLOWED_HOSTS=video.papakarlosochi.ru
+BITRIX_REST_URL=https://papakarlotools.ru/xxx
+SMTP_SRV=xxx.papakarlotools.ru
+
+RQ_REDIS_URL=redis://xxx.papakarlotools.ru/3
+RQ_DJANGO_REDIS_URL=redis://xxx.papakarlotools.ru/5
+
+WAZAPP_API_URL=https://xxx.xx
+WAZAPP_API_TOKEN=xxx
+
+DEBUG_TEL=79xxx
+SMTP_SRV_DEBUG=xxx

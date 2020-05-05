@@ -36,6 +36,7 @@ INSTALLED_APPS = [
 
     'rest_framework',
     'widget_tweaks',
+    'django_rq',
 
     'core.apps.CoreConfig'
 ]
@@ -168,3 +169,23 @@ REST_FRAMEWORK = {
 X_FRAME_OPTIONS = 'SAMEORIGIN'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/'
+
+EMAIL_HOST = config('SMTP_SRV')
+EMAIL_PORT = 25
+EMAIL_TIMEOUT = 5
+
+if DEBUG:
+    EMAIL_HOST = config('SMTP_SRV_DEBUG')
+    EMAIL_PORT = 1025
+
+RQ_QUEUES = {
+    'default': {
+        'URL': config('RQ_DJANGO_REDIS_URL'),
+        'DEFAULT_TIMEOUT': 360,
+    }
+}
+RQ_SHOW_ADMIN_LINK = True
+
+RQ = {
+    'DEFAULT_RESULT_TTL': 86400,
+}
